@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- PWA Setup -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#111822">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%2310b981'/><text x='50%' y='50%' font-family='sans-serif' font-size='260' font-weight='bold' fill='white' text-anchor='middle' dy='.3em'>B</text></svg>">
+    
+    <title>Bufunfa - Controle de Gastos</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Cabeçalho -->
+        <header class="header">
+            <div class="header-left">
+                <button class="icon-button" onclick="openDrawer()"><span class="material-icons-round">menu</span></button>
+                <div class="title-container">
+                    <div class="brand-title">Bufunfa</div>
+                    <div class="subtitle">Todas as contas</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="icon-button" onclick="openSearchModal()"><span class="material-icons-round">search</span></button>
+                <button class="icon-button" id="privacy-toggle" onclick="togglePrivacy()">
+                    <span class="material-icons-round" id="privacy-icon">visibility</span>
+                </button>
+                <button class="icon-button" id="theme-toggle" onclick="toggleTheme()">
+                    <span class="material-icons-round" id="theme-icon">light_mode</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Filtro de Mês -->
+        <div class="time-filter">
+            <span class="month prev-month" id="prev-month-btn" style="cursor:pointer;" onclick="changeMonth(-1)"></span>
+            <span class="month current-month" id="current-month-display">Mês</span>
+            <span class="month next-month" id="next-month-btn" style="cursor:pointer;" onclick="changeMonth(1)"></span>
+        </div>
+
+        <div class="main-content">
+            <!-- Gráfico de Donut e Centro -->
+            <div class="chart-container">
+                <svg viewBox="0 0 200 200" class="donut-chart" id="donut-chart">
+                    <circle class="donut-bg" cx="100" cy="100" r="70"></circle>
+                    <circle class="donut-segment income-segment" id="income-segment" cx="100" cy="100" r="70"></circle>
+                    <circle class="donut-segment expense-segment" id="expense-segment" cx="100" cy="100" r="70"></circle>
+                </svg>
+                
+                <div class="chart-center">
+                    <div class="income-text" id="income-display">R$ 0,00</div>
+                    <div class="expense-text" id="expense-display">R$ 0,00</div>
+                </div>
+            </div>
+            
+            <!-- Ícones das Categorias (Serão renderizados via JS) -->
+            <div class="categories-radial" id="categories-radial">
+            </div>
+        </div>
+
+        <!-- Controles Inferiores -->
+        <div class="bottom-controls">
+            <div class="balance-bar" id="balance-bar">
+                <div class="balance-amount" id="balance-display">Saldo R$ 0,00</div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="action-btn btn-expense" id="btn-add-expense" onclick="openInputModal('expense')">
+                    <span class="material-icons-round">remove</span>
+                </button>
+                <button class="action-btn btn-summary" id="btn-summary" onclick="openSummaryModal()">
+                    <span class="material-icons-round">receipt_long</span>
+                </button>
+                <button class="action-btn btn-income" id="btn-add-income" onclick="openInputModal('income')">
+                    <span class="material-icons-round">add</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Modal Simples de Inserção -->
+        <div class="modal-overlay" id="input-modal">
+            <div class="modal-content">
+                <h2 id="modal-title">Nova Transação</h2>
+                <div class="input-group">
+                    <label>Valor (R$)</label>
+                    <input type="text" id="input-amount" placeholder="0,00">
+                </div>
+                <div class="input-group">
+                    <label>Descrição</label>
+                    <input type="text" id="input-description" placeholder="Ex: Mercado, Uber..." autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label>Categoria</label>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="input-category" style="width: 100%;"></select>
+                        <button class="icon-button" onclick="openCategoryModal()" style="background: var(--bg-color); border-radius: 16px; width: auto; padding: 0 16px; box-shadow: inset 0 2px 5px var(--shadow-color);"><span class="material-icons-round">add</span></button>
+                    </div>
+                </div>
+                <div class="input-group" id="installment-group" style="display: none; margin-top: 24px;">
+                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; color: var(--text-primary);">
+                        <input type="checkbox" id="is-installment" onchange="toggleInstallment()" style="width: 24px; height: 24px;"> 
+                        <span id="installment-label-text">Esta despesa é parcelada?</span>
+                    </label>
+                    <div id="installment-qty-container" style="display: none; margin-top: 12px;">
+                        <label id="installment-qty-title">Quantidade de Parcelas:</label>
+                        <input type="number" id="input-installments" min="2" max="48" placeholder="Ex: 12">
+                        <small id="installment-hint" style="display: block; margin-top: 4px; color: var(--text-secondary); line-height: 1.2;">
+                            O valor total será dividido pelo número de meses.
+                        </small>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label id="card-label">Forma de Pagamento</label>
+                    <select id="input-card" style="width: 100%;"></select>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn cancel" onclick="closeInputModal()">Cancelar</button>
+                    <button class="modal-btn confirm" onclick="saveTransaction()">Salvar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Resumo Diário -->
+        <div class="modal-overlay" id="summary-modal" style="z-index: 100;">
+            <div class="modal-content summary-content">
+                <div class="summary-header">
+                    <h2>Resumo</h2>
+                    <button class="icon-button close-btn" onclick="closeSummaryModal()"><span class="material-icons-round">close</span></button>
+                </div>
+                
+                <!-- Barra de Filtros Inteligente -->
+                <div class="summary-filters" style="display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; flex-shrink: 0;">
+                    <button class="filter-pill active" onclick="setSummaryFilter('month', this)">Este Mês (Ciclo)</button>
+                    <button class="filter-pill" onclick="setSummaryFilter('day', this)">Hoje</button>
+                    <button class="filter-pill" onclick="setSummaryFilter('year', this)">Este Ano</button>
+                    <button class="filter-pill" onclick="toggleCustomPeriod(this)">Período 📅</button>
+                </div>
+
+                <div id="summary-period-panel" style="display: none; background: var(--bg-color); padding: 16px; border-radius: 16px; margin-bottom: 16px; flex-shrink: 0; box-shadow: inset 0 2px 5px var(--shadow-color);">
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-size: 11px; color: var(--text-secondary); font-weight: 700;">DT. INICIAL</label>
+                            <input type="date" id="summary-date-start" style="width: 100%; border: none; padding: 10px; border-radius: 12px; background: var(--card-bg); color: var(--text-primary); font-size: 13px; outline: none;">
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-size: 11px; color: var(--text-secondary); font-weight: 700;">DT. FINAL</label>
+                            <input type="date" id="summary-date-end" style="width: 100%; border: none; padding: 10px; border-radius: 12px; background: var(--card-bg); color: var(--text-primary); font-size: 13px; outline: none;">
+                        </div>
+                    </div>
+                    <button onclick="applyPeriodFilter()" style="margin-top: 16px; width: 100%; padding: 12px; border: none; border-radius: 12px; background: var(--income-color); color: white; font-weight: 700; font-size: 14px; cursor: pointer; transition: transform 0.1s;">Aplicar Filtro</button>
+                </div>
+
+                <div class="summary-list" id="summary-list">
+                    <!-- Injetado via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Busca Global -->
+        <div class="modal-overlay" id="search-modal" style="z-index: 100;">
+            <div class="modal-content summary-content">
+                <div class="summary-header" style="flex-direction: column; align-items: stretch; gap: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Pesquisar</h2>
+                        <button class="icon-button close-btn" onclick="closeSearchModal()"><span class="material-icons-round">close</span></button>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <input type="text" id="search-input" placeholder="Busque descrição, categorias..." onkeyup="performSearch()" autocomplete="off" style="border-radius: 12px;">
+                    </div>
+                    <!-- Chips de Autocompletar -->
+                    <div id="search-suggestions" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px;"></div>
+                </div>
+                <div class="summary-list" id="search-results-list" style="margin-top: 16px;">
+                    <!-- Resultados via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Nova Categoria -->
+        <div class="modal-overlay" id="category-modal" style="z-index: 200;">
+            <div class="modal-content">
+                <h2>Nova Categoria</h2>
+                <div class="input-group">
+                    <label>Nome</label>
+                    <input type="text" id="cat-name" placeholder="Ex: Academia" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label>Cor Pessoal</label>
+                    <input type="color" id="cat-color" value="#10b981" style="height: 50px; padding: 4px; cursor: pointer;">
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn cancel" onclick="closeCategoryModal()">Cancelar</button>
+                    <button class="modal-btn confirm" onclick="saveCategory()">Criar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Drawer de Configuração -->
+        <div class="drawer-overlay" id="drawer-menu">
+            <div class="drawer-content">
+                <div class="drawer-header">
+                    <h2>Ajustes</h2>
+                    <button class="icon-button" onclick="closeDrawer()"><span class="material-icons-round">close</span></button>
+                </div>
+                <div class="input-group">
+                    <label>Moeda Principal</label>
+                    <select id="drawer-currency" style="width: 100%;">
+                        <option value="BRL">Real (R$)</option>
+                        <option value="USD">Dólar (US$)</option>
+                        <option value="EUR">Euro (€)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>1º Dia da Semana</label>
+                    <select id="drawer-week-start" style="width: 100%;">
+                        <option value="domingo">Domingo</option>
+                        <option value="segunda">Segunda-Feira</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Início do Mês (Ciclo)</label>
+                    <input type="number" id="drawer-month-start" min="1" max="31" placeholder="Ex: 5" style="width: 100%;">
+                    <small style="color: var(--text-secondary); margin-top: 4px; display: block;">Dia onde o mês contábil 'vira'.</small>
+                </div>
+                
+                <hr style="border: none; border-top: 1px solid var(--donut-bg); margin: 24px 0;">
+                
+                <div class="input-group">
+                    <label>Dados</label>
+                    <button class="modal-btn" onclick="exportToExcel()" style="width: 100%; background: var(--bg-color); color: var(--text-primary); border: 1px solid var(--donut-bg); display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600;">
+                        <span class="material-icons-round" style="color: var(--income-color);">table_view</span> 
+                        Exportar Excel (.csv)
+                    </button>
+                    <small style="color: var(--text-secondary); margin-top: 8px; display: block;">Faça o backup das contas e vizualise pelo software do seu pacote Office.</small>
+                </div>
+
+                <div class="modal-actions" style="margin-top: 32px;">
+                    <button class="modal-btn confirm" style="width: 100%;" onclick="saveSettings()">Aplicar Mudanças</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
