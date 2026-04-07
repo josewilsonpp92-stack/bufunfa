@@ -1,6 +1,5 @@
 const CACHE_NAME = 'bufunfa-v1';
 const ASSETS = [
-    './',
     './index.html',
     './style.css',
     './script.js',
